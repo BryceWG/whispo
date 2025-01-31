@@ -1,4 +1,4 @@
-import fs from "fs"
+import { promises as fs } from "fs"
 import { getRendererHandlers, tipc } from "@egoist/tipc/main"
 import { showPanelWindow, WINDOWS } from "./window"
 import {
@@ -9,7 +9,7 @@ import {
   systemPreferences,
   dialog,
 } from "electron"
-import path from "path"
+import { join } from "path"
 import { configStore, recordingsFolder } from "./config"
 import { Config, RecordingHistoryItem } from "../shared/types"
 import { RendererHandlers } from "./renderer-handlers"
@@ -24,7 +24,7 @@ const t = tipc.create()
 const getRecordingHistory = () => {
   try {
     const history = JSON.parse(
-      fs.readFileSync(path.join(recordingsFolder, "history.json"), "utf8"),
+      fs.readFileSync(join(recordingsFolder, "history.json"), "utf8"),
     ) as RecordingHistoryItem[]
 
     // sort desc by createdAt
@@ -36,7 +36,7 @@ const getRecordingHistory = () => {
 
 const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
   fs.writeFileSync(
-    path.join(recordingsFolder, "history.json"),
+    join(recordingsFolder, "history.json"),
     JSON.stringify(history),
   )
 }
@@ -90,7 +90,9 @@ export const router = {
         })
       }
 
-      if (import.meta.env.DEV) {
+      const isDev = process.env.NODE_ENV === "development"
+
+      if (isDev) {
         items.push({
           label: "Inspect Element",
           click() {
@@ -160,6 +162,70 @@ export const router = {
         "file",
         new File([input.recording], "recording.webm", { type: "audio/webm" }),
       )
+
+      if (config.sttProviderId === "siliconflow") {
+        form.append(
+          "model",
+          config.siliconflowModel || "FunAudioLLM/SenseVoiceSmall"
+        )
+
+        const siliconflowBaseUrl = config.siliconflowBaseUrl || "https://api.siliconflow.cn/v1"
+
+        const transcriptResponse = await fetch(
+          `${siliconflowBaseUrl}/audio/transcriptions`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${config.siliconflowApiKey}`,
+            },
+            body: form,
+          }
+        )
+
+        if (!transcriptResponse.ok) {
+          const message = `${transcriptResponse.statusText} ${(await transcriptResponse.text()).slice(0, 300)}`
+          throw new Error(message)
+        }
+
+        const json: { text: string } = await transcriptResponse.json()
+        const transcript = await postProcessTranscript(json.text)
+
+        const history = getRecordingHistory()
+        const item: RecordingHistoryItem = {
+          id: Date.now().toString(),
+          createdAt: Date.now(),
+          duration: input.duration,
+          transcript,
+        }
+        history.push(item)
+        saveRecordingsHitory(history)
+
+        fs.writeFileSync(
+          join(recordingsFolder, `${item.id}.webm`),
+          Buffer.from(input.recording),
+        )
+
+        const main = WINDOWS.get("main")
+        if (main) {
+          getRendererHandlers<RendererHandlers>(
+            main.webContents,
+          ).refreshRecordingHistory.send()
+        }
+
+        const panel = WINDOWS.get("panel")
+        if (panel) {
+          panel.hide()
+        }
+
+        // paste
+        clipboard.writeText(transcript)
+        if (isAccessibilityGranted()) {
+          await writeText(transcript)
+        }
+
+        return
+      }
+
       form.append(
         "model",
         config.sttProviderId === "groq" ? "whisper-large-v3" : "whisper-1",
@@ -202,7 +268,7 @@ export const router = {
       saveRecordingsHitory(history)
 
       fs.writeFileSync(
-        path.join(recordingsFolder, `${item.id}.webm`),
+        join(recordingsFolder, `${item.id}.webm`),
         Buffer.from(input.recording),
       )
 
@@ -234,7 +300,7 @@ export const router = {
         (item) => item.id !== input.id,
       )
       saveRecordingsHitory(recordings)
-      fs.unlinkSync(path.join(recordingsFolder, `${input.id}.webm`))
+      fs.unlinkSync(join(recordingsFolder, `${input.id}.webm`))
     }),
 
   deleteRecordingHistory: t.procedure.action(async () => {

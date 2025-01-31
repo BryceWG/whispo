@@ -22,6 +22,10 @@ export type Config = {
   geminiApiKey?: string
   geminiBaseUrl?: string
 
+  siliconflowApiKey?: string
+  siliconflowBaseUrl?: string
+  siliconflowModel?: string
+
   transcriptPostProcessingEnabled?: boolean
   transcriptPostProcessingProviderId?: CHAT_PROVIDER_ID
   transcriptPostProcessingPrompt?: string

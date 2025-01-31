@@ -104,6 +104,46 @@ export function Component() {
           />
         </Control>
       </ControlGroup>
+
+      <ControlGroup title="SiliconFlow">
+        <Control label="API Key" className="px-3">
+          <Input
+            type="password"
+            defaultValue={configQuery.data.siliconflowApiKey}
+            onChange={(e) => {
+              saveConfig({
+                siliconflowApiKey: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+
+        <Control label="API Base URL" className="px-3">
+          <Input
+            type="url"
+            placeholder="https://api.siliconflow.cn/v1"
+            defaultValue={configQuery.data.siliconflowBaseUrl}
+            onChange={(e) => {
+              saveConfig({
+                siliconflowBaseUrl: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+
+        <Control label="Model" className="px-3">
+          <Input
+            type="text"
+            placeholder="FunAudioLLM/SenseVoiceSmall"
+            defaultValue={configQuery.data.siliconflowModel}
+            onChange={(e) => {
+              saveConfig({
+                siliconflowModel: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+      </ControlGroup>
     </div>
   )
 }
