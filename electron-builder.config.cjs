@@ -21,7 +21,17 @@ module.exports = {
     "!.prettierrc",
     '!whispo-rs/*'
   ],
-  asarUnpack: ["resources/bin/*"],
+  asarUnpack: [
+    "resources/bin/*",
+    "resources/ffmpeg/*"
+  ],
+  extraResources: [
+    {
+      from: "resources/ffmpeg",
+      to: "ffmpeg",
+      filter: ["**/*"]
+    }
+  ],
   asar: true,
   compression: "maximum",
   win: {

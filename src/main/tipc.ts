@@ -19,6 +19,8 @@ import { state } from "./state"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText } from "./keyboard"
+import { execSync } from "child_process"
+import { tmpdir } from "os"
 
 const t = tipc.create()
 
@@ -40,6 +42,49 @@ const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
     join(recordingsFolder, "history.json"),
     JSON.stringify(history),
   )
+}
+
+// 获取 ffmpeg 路径
+function getFfmpegPath() {
+  const isDev = process.env.NODE_ENV === "development"
+  if (isDev) {
+    return "ffmpeg"
+  }
+  return join(process.resourcesPath, "ffmpeg", "ffmpeg.exe")
+}
+
+// 添加音频转换函数
+async function convertWebmToWav(inputBuffer: ArrayBuffer): Promise<Buffer> {
+  const tempDir = tmpdir();
+  const tempInputPath = join(tempDir, `temp-${Date.now()}.webm`);
+  const tempOutputPath = join(tempDir, `temp-${Date.now()}.wav`);
+  const ffmpegPath = getFfmpegPath();
+
+  try {
+    // 写入临时 webm 文件
+    fs.writeFileSync(tempInputPath, Buffer.from(inputBuffer));
+
+    // 使用 ffmpeg 转换为 wav
+    execSync(`"${ffmpegPath}" -i "${tempInputPath}" -acodec pcm_s16le -ar 16000 "${tempOutputPath}"`, {
+      stdio: 'pipe'
+    });
+
+    // 读取转换后的 wav 文件
+    const wavBuffer = fs.readFileSync(tempOutputPath);
+
+    // 清理临时文件
+    fs.unlinkSync(tempInputPath);
+    fs.unlinkSync(tempOutputPath);
+
+    return wavBuffer;
+  } catch (error) {
+    // 确保清理临时文件
+    try {
+      fs.unlinkSync(tempInputPath);
+      fs.unlinkSync(tempOutputPath);
+    } catch {}
+    throw error;
+  }
 }
 
 export const router = {
@@ -159,12 +204,15 @@ export const router = {
 
       const config = configStore.get()
       const form = new FormData()
-      form.append(
-        "file",
-        new File([input.recording], "recording.webm", { type: "audio/webm" }),
-      )
 
       if (config.sttProviderId === "siliconflow") {
+        // 转换音频格式
+        const wavBuffer = await convertWebmToWav(input.recording);
+        
+        form.append(
+          "file",
+          new File([wavBuffer], "recording.wav", { type: "audio/wav" }),
+        )
         form.append(
           "model",
           config.siliconflowModel || "FunAudioLLM/SenseVoiceSmall"
@@ -202,8 +250,8 @@ export const router = {
         saveRecordingsHitory(history)
 
         fs.writeFileSync(
-          join(recordingsFolder, `${item.id}.webm`),
-          Buffer.from(input.recording),
+          join(recordingsFolder, `${item.id}.wav`),
+          wavBuffer,
         )
 
         const main = WINDOWS.get("main")
