@@ -258,6 +258,10 @@ export const router = {
       const form = new FormData()
 
       if (config.sttProviderId === "siliconflow") {
+        if (!config.siliconflowApiKey) {
+          throw new Error("SiliconFlow API key is required")
+        }
+
         // 转换音频格式
         const wavBuffer = await convertWebmToWav(input.recording);
         
@@ -328,6 +332,10 @@ export const router = {
       }
 
       if (config.sttProviderId === "assemblyai") {
+        if (!config.assemblyaiApiKey) {
+          throw new Error("Assembly AI API key is required")
+        }
+
         const assemblyaiBaseUrl = config.assemblyaiBaseUrl || "https://api.assemblyai.com/v2"
         const audioUrl = await uploadToAssemblyAI(
           input.recording,
@@ -389,6 +397,14 @@ export const router = {
 
       const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
       const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+
+      if (config.sttProviderId === "groq" && !config.groqApiKey) {
+        throw new Error("Groq API key is required")
+      }
+
+      if (config.sttProviderId === "openai" && !config.openaiApiKey) {
+        throw new Error("OpenAI API key is required")
+      }
 
       const transcriptResponse = await fetch(
         config.sttProviderId === "groq"
