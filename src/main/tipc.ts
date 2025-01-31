@@ -1,4 +1,5 @@
-import { promises as fs } from "fs"
+import * as fs from "fs"
+import { promises as fsPromises } from "fs"
 import { getRendererHandlers, tipc } from "@egoist/tipc/main"
 import { showPanelWindow, WINDOWS } from "./window"
 import {
