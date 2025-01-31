@@ -51,8 +51,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
           USE_HARD_LINKS: false
 
+      - name: Build Windows
+        run: pnpm run build:win
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+          USE_HARD_LINKS: false
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            dist/*.exe
+            release/build/*.exe
+            release/*.exe
+            out/make/*.exe
+
       - name: Release
         run: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
           USE_HARD_LINKS: false
+
+      - name: List Build Output
+        run: |
+          dir dist /s
+          dir release /s
+          dir out /s

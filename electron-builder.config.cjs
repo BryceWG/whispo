@@ -6,6 +6,7 @@ module.exports = {
   productName: "Whispo",
   directories: {
     buildResources: "build",
+    output: "release"
   },
   files: [
     "!**/.vscode/*",
@@ -23,12 +24,24 @@ module.exports = {
   asarUnpack: ["resources/**", "node_modules/**"],
   win: {
     executableName: "whispo",
+    target: [
+      {
+        target: "nsis",
+        arch: ["x64"]
+      },
+      {
+        target: "portable",
+        arch: ["x64"]
+      }
+    ]
   },
   nsis: {
     artifactName: "${name}-${version}-setup.${ext}",
     shortcutName: "${productName}",
     uninstallDisplayName: "${productName}",
     createDesktopShortcut: "always",
+    oneClick: false,
+    allowToChangeInstallationDirectory: true
   },
   mac: {
     binaries: [`resources/bin/whispo-rs${process.platform === 'darwin' ? '' : '.exe'}`],
