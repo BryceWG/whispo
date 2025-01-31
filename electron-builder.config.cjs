@@ -23,12 +23,18 @@ module.exports = {
   ],
   asarUnpack: [
     "resources/bin/*",
-    "resources/ffmpeg/*"
+    "resources/ffmpeg/*",
+    "resources/python/*"
   ],
   extraResources: [
     {
       from: "resources/ffmpeg",
       to: "ffmpeg",
+      filter: ["**/*"]
+    },
+    {
+      from: "resources/python",
+      to: "python",
       filter: ["**/*"]
     }
   ],

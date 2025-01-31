@@ -21,6 +21,7 @@ import { isAccessibilityGranted } from "./utils"
 import { writeText } from "./keyboard"
 import { execSync } from "child_process"
 import { tmpdir } from "os"
+import { spawn } from "child_process"
 
 const t = tipc.create()
 
@@ -183,6 +184,47 @@ async function pollTranscriptionStatus(
   }
 
   throw new Error("Transcription timed out")
+}
+
+// 添加 Python 脚本调用函数
+async function transcribeWithDashScope(
+  audioPath: string,
+  apiKey: string,
+  model: string = "qwen-audio-asr"
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const pythonScript = join(process.resourcesPath, "python", "dashscope_transcribe.py")
+    const pythonProcess = spawn("python", [pythonScript, audioPath, apiKey, model])
+
+    let outputData = ""
+    let errorData = ""
+
+    pythonProcess.stdout.on("data", (data) => {
+      outputData += data.toString()
+    })
+
+    pythonProcess.stderr.on("data", (data) => {
+      errorData += data.toString()
+    })
+
+    pythonProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`Python process failed: ${errorData}`))
+        return
+      }
+
+      try {
+        const result = JSON.parse(outputData)
+        if (result.success) {
+          resolve(result.text)
+        } else {
+          reject(new Error(result.error))
+        }
+      } catch (error) {
+        reject(new Error(`Failed to parse Python output: ${error}`))
+      }
+    })
+  })
 }
 
 export const router = {
@@ -433,6 +475,68 @@ export const router = {
         }
 
         return
+      }
+
+      if (config.sttProviderId === "dashscope") {
+        if (!config.dashscopeApiKey) {
+          throw new Error("DashScope API key is required")
+        }
+
+        // 保存音频文件
+        const audioPath = join(recordingsFolder, `temp-${Date.now()}.webm`)
+        fs.writeFileSync(audioPath, Buffer.from(input.recording))
+
+        try {
+          // 调用 Python 脚本进行转录
+          const transcript = await transcribeWithDashScope(
+            audioPath,
+            config.dashscopeApiKey,
+            config.dashscopeModel || "qwen-audio-asr"
+          )
+
+          const processedTranscript = await postProcessTranscript(transcript)
+
+          const history = getRecordingHistory()
+          const item: RecordingHistoryItem = {
+            id: Date.now().toString(),
+            createdAt: Date.now(),
+            duration: input.duration,
+            transcript: processedTranscript,
+          }
+          history.push(item)
+          saveRecordingsHitory(history)
+
+          // 将临时文件移动到历史记录
+          const finalPath = join(recordingsFolder, `${item.id}.webm`)
+          fs.renameSync(audioPath, finalPath)
+
+          const main = WINDOWS.get("main")
+          if (main) {
+            getRendererHandlers<RendererHandlers>(
+              main.webContents,
+            ).refreshRecordingHistory.send()
+          }
+
+          const panel = WINDOWS.get("panel")
+          if (panel) {
+            panel.hide()
+          }
+
+          // paste
+          clipboard.writeText(processedTranscript)
+          if (isAccessibilityGranted()) {
+            await writeText(processedTranscript)
+          }
+
+          return
+        } finally {
+          // 清理临时文件
+          try {
+            if (fs.existsSync(audioPath)) {
+              fs.unlinkSync(audioPath)
+            }
+          } catch {}
+        }
       }
 
       form.append(

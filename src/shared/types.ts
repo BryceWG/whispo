@@ -31,6 +31,9 @@ export type Config = {
   assemblyaiLanguageDetection?: boolean
   assemblyaiLanguageConfidenceThreshold?: number
 
+  dashscopeApiKey?: string
+  dashscopeModel?: string
+
   transcriptPostProcessingEnabled?: boolean
   transcriptPostProcessingProviderId?: CHAT_PROVIDER_ID
   transcriptPostProcessingPrompt?: string

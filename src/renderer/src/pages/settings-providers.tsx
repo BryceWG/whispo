@@ -202,6 +202,33 @@ export function Component() {
           />
         </Control>
       </ControlGroup>
+
+      <ControlGroup title="DashScope">
+        <Control label="API Key" className="px-3">
+          <Input
+            type="password"
+            defaultValue={configQuery.data.dashscopeApiKey}
+            onChange={(e) => {
+              saveConfig({
+                dashscopeApiKey: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+
+        <Control label="Model" className="px-3">
+          <Input
+            type="text"
+            placeholder="qwen-audio-asr"
+            defaultValue={configQuery.data.dashscopeModel}
+            onChange={(e) => {
+              saveConfig({
+                dashscopeModel: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+      </ControlGroup>
     </div>
   )
 }
