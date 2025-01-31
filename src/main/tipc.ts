@@ -87,7 +87,7 @@ async function convertWebmToWav(inputBuffer: ArrayBuffer): Promise<Buffer> {
   }
 }
 
-// 添加 Assembly AI 的上传和转录函数
+// 修改 uploadToAssemblyAI 函数
 async function uploadToAssemblyAI(audioBuffer: ArrayBuffer, apiKey: string, baseUrl: string): Promise<string> {
   const uploadUrl = `${baseUrl}/upload`
   const uploadResponse = await fetch(uploadUrl, {
@@ -96,7 +96,8 @@ async function uploadToAssemblyAI(audioBuffer: ArrayBuffer, apiKey: string, base
       "Authorization": apiKey,
       "Content-Type": "application/octet-stream"
     },
-    body: audioBuffer
+    // 将 ArrayBuffer 转换为 Buffer
+    body: Buffer.from(audioBuffer)
   })
 
   if (!uploadResponse.ok) {
@@ -108,6 +109,7 @@ async function uploadToAssemblyAI(audioBuffer: ArrayBuffer, apiKey: string, base
   return uploadResult.upload_url
 }
 
+// 修改 transcribeWithAssemblyAI 函数
 async function transcribeWithAssemblyAI(
   audioUrl: string, 
   apiKey: string, 
@@ -126,7 +128,9 @@ async function transcribeWithAssemblyAI(
       audio_url: audioUrl,
       format_text: true,
       language_detection: languageDetection,
-      language_confidence_threshold: confidenceThreshold || 0.7
+      language_confidence_threshold: confidenceThreshold || 0.7,
+      punctuate: true,
+      format_text: true
     })
   })
 
@@ -136,7 +140,50 @@ async function transcribeWithAssemblyAI(
   }
 
   const transcriptResult = await transcriptResponse.json()
-  return transcriptResult.text
+
+  // 检查转录状态
+  if (transcriptResult.status === "queued" || transcriptResult.status === "processing") {
+    // 等待转录完成
+    return await pollTranscriptionStatus(transcriptResult.id, apiKey, baseUrl)
+  }
+
+  return transcriptResult.text || ""
+}
+
+// 添加轮询状态检查函数
+async function pollTranscriptionStatus(
+  transcriptId: string,
+  apiKey: string,
+  baseUrl: string,
+  maxAttempts: number = 30,
+  interval: number = 1000
+): Promise<string> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const statusResponse = await fetch(`${baseUrl}/transcript/${transcriptId}`, {
+      headers: {
+        "Authorization": apiKey
+      }
+    })
+
+    if (!statusResponse.ok) {
+      throw new Error(`Failed to check transcription status: ${statusResponse.statusText}`)
+    }
+
+    const result = await statusResponse.json()
+
+    if (result.status === "completed") {
+      return result.text
+    }
+
+    if (result.status === "error") {
+      throw new Error(`Transcription failed: ${result.error}`)
+    }
+
+    // 等待一段时间后再次检查
+    await new Promise(resolve => setTimeout(resolve, interval))
+  }
+
+  throw new Error("Transcription timed out")
 }
 
 export const router = {
