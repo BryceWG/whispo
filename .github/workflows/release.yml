@@ -23,7 +23,6 @@ jobs:
         with:
           toolchain: stable
           target: x86_64-pc-windows-msvc
-          profile: minimal
 
       - name: Install pnpm
         run: npm i -g pnpm@9
@@ -54,6 +53,29 @@ jobs:
           cd ..
           mkdir -p resources/bin
           copy whispo-rs\target\x86_64-pc-windows-msvc\release\whispo-rs.exe resources\bin\
+
+      - name: Build Electron
+        run: pnpm run build
+
+      - name: Build Windows Package
+        run: pnpm run build:win
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+          USE_HARD_LINKS: false
+
+      - name: List Build Output
+        shell: pwsh
+        run: |
+          Write-Host "Checking build output directories..."
+          Get-ChildItem -Path release -Recurse -Include *.exe | ForEach-Object {
+              Write-Host $_.FullName
+          }
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
 
       - name: Release
         run: pnpm run release
