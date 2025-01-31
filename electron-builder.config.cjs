@@ -21,16 +21,14 @@ module.exports = {
     "!.prettierrc",
     '!whispo-rs/*'
   ],
-  asarUnpack: ["resources/**", "node_modules/**"],
+  asarUnpack: ["resources/bin/*"],
+  asar: true,
+  compression: "maximum",
   win: {
     executableName: "whispo",
     target: [
       {
         target: "nsis",
-        arch: ["x64"]
-      },
-      {
-        target: "portable",
         arch: ["x64"]
       }
     ]
@@ -40,8 +38,11 @@ module.exports = {
     shortcutName: "${productName}",
     uninstallDisplayName: "${productName}",
     createDesktopShortcut: "always",
-    oneClick: false,
-    allowToChangeInstallationDirectory: true
+    oneClick: true,
+    perMachine: false,
+    allowToChangeInstallationDirectory: false,
+    deleteAppDataOnUninstall: true,
+    differentialPackage: true
   },
   mac: {
     binaries: [`resources/bin/whispo-rs${process.platform === 'darwin' ? '' : '.exe'}`],
@@ -89,4 +90,5 @@ module.exports = {
     repo: "whispo",
   },
   removePackageScripts: true,
+  buildDependenciesFromSource: false
 }
