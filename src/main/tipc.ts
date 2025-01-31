@@ -129,8 +129,7 @@ async function transcribeWithAssemblyAI(
       format_text: true,
       language_detection: languageDetection,
       language_confidence_threshold: confidenceThreshold || 0.7,
-      punctuate: true,
-      format_text: true
+      punctuate: true
     })
   })
 
