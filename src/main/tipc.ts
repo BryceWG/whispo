@@ -87,6 +87,58 @@ async function convertWebmToWav(inputBuffer: ArrayBuffer): Promise<Buffer> {
   }
 }
 
+// 添加 Assembly AI 的上传和转录函数
+async function uploadToAssemblyAI(audioBuffer: ArrayBuffer, apiKey: string, baseUrl: string): Promise<string> {
+  const uploadUrl = `${baseUrl}/upload`
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Authorization": apiKey,
+      "Content-Type": "application/octet-stream"
+    },
+    body: audioBuffer
+  })
+
+  if (!uploadResponse.ok) {
+    const message = `${uploadResponse.statusText} ${(await uploadResponse.text()).slice(0, 300)}`
+    throw new Error(`Upload failed: ${message}`)
+  }
+
+  const uploadResult = await uploadResponse.json()
+  return uploadResult.upload_url
+}
+
+async function transcribeWithAssemblyAI(
+  audioUrl: string, 
+  apiKey: string, 
+  baseUrl: string,
+  languageDetection: boolean,
+  confidenceThreshold: number
+): Promise<string> {
+  const transcriptUrl = `${baseUrl}/transcript`
+  const transcriptResponse = await fetch(transcriptUrl, {
+    method: "POST",
+    headers: {
+      "Authorization": apiKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      audio_url: audioUrl,
+      format_text: true,
+      language_detection: languageDetection,
+      language_confidence_threshold: confidenceThreshold || 0.7
+    })
+  })
+
+  if (!transcriptResponse.ok) {
+    const message = `${transcriptResponse.statusText} ${(await transcriptResponse.text()).slice(0, 300)}`
+    throw new Error(`Transcription failed: ${message}`)
+  }
+
+  const transcriptResult = await transcriptResponse.json()
+  return transcriptResult.text
+}
+
 export const router = {
   restartApp: t.procedure.action(async () => {
     app.relaunch()
@@ -270,6 +322,60 @@ export const router = {
         clipboard.writeText(transcript)
         if (isAccessibilityGranted()) {
           await writeText(transcript)
+        }
+
+        return
+      }
+
+      if (config.sttProviderId === "assemblyai") {
+        const assemblyaiBaseUrl = config.assemblyaiBaseUrl || "https://api.assemblyai.com/v2"
+        const audioUrl = await uploadToAssemblyAI(
+          input.recording,
+          config.assemblyaiApiKey,
+          assemblyaiBaseUrl
+        )
+
+        const transcript = await transcribeWithAssemblyAI(
+          audioUrl,
+          config.assemblyaiApiKey,
+          assemblyaiBaseUrl,
+          config.assemblyaiLanguageDetection || false,
+          config.assemblyaiLanguageConfidenceThreshold || 0.7
+        )
+
+        const processedTranscript = await postProcessTranscript(transcript)
+
+        const history = getRecordingHistory()
+        const item: RecordingHistoryItem = {
+          id: Date.now().toString(),
+          createdAt: Date.now(),
+          duration: input.duration,
+          transcript: processedTranscript,
+        }
+        history.push(item)
+        saveRecordingsHitory(history)
+
+        fs.writeFileSync(
+          join(recordingsFolder, `${item.id}.webm`),
+          Buffer.from(input.recording),
+        )
+
+        const main = WINDOWS.get("main")
+        if (main) {
+          getRendererHandlers<RendererHandlers>(
+            main.webContents,
+          ).refreshRecordingHistory.send()
+        }
+
+        const panel = WINDOWS.get("panel")
+        if (panel) {
+          panel.hide()
+        }
+
+        // paste
+        clipboard.writeText(processedTranscript)
+        if (isAccessibilityGranted()) {
+          await writeText(processedTranscript)
         }
 
         return

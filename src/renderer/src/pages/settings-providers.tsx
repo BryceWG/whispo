@@ -5,6 +5,7 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
 import { Config } from "@shared/types"
+import { Switch } from "@renderer/components/ui/switch"
 
 export function Component() {
   const configQuery = useConfigQuery()
@@ -140,6 +141,63 @@ export function Component() {
               saveConfig({
                 siliconflowModel: e.currentTarget.value,
               })
+            }}
+          />
+        </Control>
+      </ControlGroup>
+
+      <ControlGroup title="Assembly AI">
+        <Control label="API Key" className="px-3">
+          <Input
+            type="password"
+            defaultValue={configQuery.data.assemblyaiApiKey}
+            onChange={(e) => {
+              saveConfig({
+                assemblyaiApiKey: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+
+        <Control label="API Base URL" className="px-3">
+          <Input
+            type="url"
+            placeholder="https://api.assemblyai.com/v2"
+            defaultValue={configQuery.data.assemblyaiBaseUrl}
+            onChange={(e) => {
+              saveConfig({
+                assemblyaiBaseUrl: e.currentTarget.value,
+              })
+            }}
+          />
+        </Control>
+
+        <Control label="Language Detection" className="px-3">
+          <Switch
+            defaultChecked={configQuery.data.assemblyaiLanguageDetection}
+            onCheckedChange={(checked) => {
+              saveConfig({
+                assemblyaiLanguageDetection: checked,
+              })
+            }}
+          />
+        </Control>
+
+        <Control label="Language Confidence Threshold" className="px-3">
+          <Input
+            type="number"
+            min="0"
+            max="1"
+            step="0.1"
+            placeholder="0.7"
+            defaultValue={configQuery.data.assemblyaiLanguageConfidenceThreshold?.toString()}
+            onChange={(e) => {
+              const value = parseFloat(e.currentTarget.value)
+              if (!isNaN(value) && value >= 0 && value <= 1) {
+                saveConfig({
+                  assemblyaiLanguageConfidenceThreshold: value,
+                })
+              }
             }}
           />
         </Control>

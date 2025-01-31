@@ -26,6 +26,11 @@ export type Config = {
   siliconflowBaseUrl?: string
   siliconflowModel?: string
 
+  assemblyaiApiKey?: string
+  assemblyaiBaseUrl?: string
+  assemblyaiLanguageDetection?: boolean
+  assemblyaiLanguageConfidenceThreshold?: number
+
   transcriptPostProcessingEnabled?: boolean
   transcriptPostProcessingProviderId?: CHAT_PROVIDER_ID
   transcriptPostProcessingPrompt?: string

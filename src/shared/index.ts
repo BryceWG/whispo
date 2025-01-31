@@ -11,6 +11,10 @@ export const STT_PROVIDERS = [
     label: "SiliconFlow",
     value: "siliconflow",
   },
+  {
+    label: "Assembly AI",
+    value: "assemblyai",
+  },
 ] as const
 
 export type STT_PROVIDER_ID = (typeof STT_PROVIDERS)[number]["value"]
