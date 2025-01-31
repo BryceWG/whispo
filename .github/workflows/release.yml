@@ -46,6 +46,6 @@ jobs:
       - name: Release
         run: pnpm run release
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
           # https://github.com/electron-userland/electron-builder/issues/3179
           USE_HARD_LINKS: false
