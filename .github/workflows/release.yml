@@ -45,36 +45,34 @@ jobs:
           pnpm install --no-frozen-lockfile
           pnpm rebuild @egoist/electron-panel-window
 
-      - name: Build
-        run: pnpm run build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
-          USE_HARD_LINKS: false
+      - name: Build Rust Binary
+        run: pnpm run build-rs:win
 
-      - name: Build Windows
+      - name: Build Electron App
         run: pnpm run build:win
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
           USE_HARD_LINKS: false
+
+      - name: List Build Output
+        shell: pwsh
+        run: |
+          Write-Host "Checking build output directories..."
+          Get-ChildItem -Path . -Recurse -Include *.exe | ForEach-Object {
+              Write-Host $_.FullName
+          }
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
           path: |
-            dist/*.exe
-            release/build/*.exe
-            release/*.exe
-            out/make/*.exe
+            out/**/*.exe
+            release/**/*.exe
+            dist/**/*.exe
 
       - name: Release
         run: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PUBLISH_TOKEN }}
           USE_HARD_LINKS: false
-
-      - name: List Build Output
-        run: |
-          dir dist /s
-          dir release /s
-          dir out /s
